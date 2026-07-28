@@ -7,7 +7,7 @@ import type {
   ReactNode
 } from 'react'
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import ShikiHighlighter from 'react-shiki'
+import { LazyShiki as ShikiHighlighter } from '@/components/chat/shiki-highlighter'
 import { Streamdown } from 'streamdown'
 
 import { requestComposerFocus, requestComposerInsertRefs } from '@/app/chat/composer/focus'
