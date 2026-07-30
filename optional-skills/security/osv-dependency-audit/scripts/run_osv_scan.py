@@ -204,7 +204,7 @@ def normalize_report(
             "target": str(target.resolve()),
             "started_at": started_at,
             "finished_at": finished_at,
-            "exit_code": exit_code,
+            "scan_exit_code": exit_code,
             "finding_count": len(findings),
         },
         "findings": findings,
@@ -295,7 +295,7 @@ def main() -> int:
 
     if completed.stderr.strip():
         print(completed.stderr.rstrip(), file=sys.stderr)
-    return completed.returncode
+    return 0
 
 
 if __name__ == "__main__":
