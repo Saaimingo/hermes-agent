@@ -188,12 +188,12 @@ gateway:
 
   reasoning:
     level_default:             "medium (padrão)"
-    level_disabled:            "none (desativedo)"
+    level_disabled:            "none (desativado)"
     scope_session:             "substituição de sessão"
     scope_global:              "configuração global"
     status:                    "🧠 **Configurações de raciocínio**\n\n**Esforço:** `{level}`\n**Escopo:** {scope}\n**Visualização:** {display}\n\n_Uso:_ `/reasoning <none|minimal|low|medium|high|xhigh|max|ultra|reset|show|hide> [--global]`"
     display_on:                "ativada ✓"
-    display_off:               "desativeda"
+    display_off:               "desativada"
     display_set_on:            "🧠 ✓ Visualização do raciocínio: **ATIVADA**\nO pensamento do modelo será mostrado antes de cada resposta em **{platform}**."
     display_set_off:           "🧠 ✓ Visualização do raciocínio: **DESATIVADA** para **{platform}**"
     reset_global_unsupported:  "⚠️ `/reasoning reset --global` não é suportado. Use `/reasoning <level> --global` para alterar o padrão global."
@@ -340,7 +340,7 @@ Future messages in this room will use that transcript until `/reset` or another 
     warn_prefix:           "⚠️ {error}"
     empty_after_clean:     "⚠️ O título está vazio após a limpeza. Use caracteres imprimíveis."
     set_to:                "✏️ Título da sessão definido: **{title}**"
-    not_found:             "Sessão não encontrada na banco de dados."
+    not_found:             "Sessão não encontrada no banco de dados."
     current_with_title:    "📌 Sessão: `{session_id}`\nTítulo: **{title}**"
     current_no_title:      "📌 Sessão: `{session_id}`\nSem título. Uso: `/title Meu nome de sessão`"
 
@@ -437,5 +437,5 @@ Future messages in this room will use that transcript until `/reset` or another 
   shared:
     session_db_unavailable:      "Banco de dados de sessões indisponível."
     session_db_unavailable_prefix: "Banco de dados de sessões indisponível"
-    session_not_found:           "Sessão não encontrada na banco de dados."
+    session_not_found:           "Sessão não encontrada no banco de dados."
     warn_passthrough:            "⚠️ {error}"
