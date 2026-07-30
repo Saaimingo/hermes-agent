@@ -26,7 +26,7 @@ Language resolution order:
     4. ``"en"`` (baseline)
 
 Supported languages: en, zh, zh-hant, ja, de, es, fr, tr, uk, af, ko, it, ga,
-pt, ru, hu, ar.  Unknown values fall back to en.
+pt, pt-br, ru, hu, ar.  Unknown values fall back to en.
 """
 
 from __future__ import annotations
@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 SUPPORTED_LANGUAGES: tuple[str, ...] = (
     "en", "zh", "zh-hant", "ja", "de", "es", "fr", "tr", "uk",
-    "af", "ko", "it", "ga", "pt", "ru", "hu", "ar",
+    "af", "ko", "it", "ga", "pt", "pt-br", "ru", "hu", "ar",
 )
 DEFAULT_LANGUAGE = "en"
 
@@ -71,10 +71,13 @@ _LANGUAGE_ALIASES: dict[str, str] = {
     "italian": "it", "italiano": "it", "it-it": "it", "it-ch": "it",
     # Irish (Gaeilge) — ga is the BCP-47 code
     "irish": "ga", "gaeilge": "ga", "ga-ie": "ga",
-    # Portuguese — bare "portuguese" routes to European Portuguese; pt-br
-    # is in the same family but rendered identically here (no separate br catalog).
+    # Portuguese — keep European and Brazilian Portuguese as separate catalogs.
     "portuguese": "pt", "português": "pt", "portugues": "pt",
-    "pt-pt": "pt", "pt-br": "pt", "brazilian": "pt", "brasileiro": "pt",
+    "pt-pt": "pt", "pt_pt": "pt",
+    "pt-br": "pt-br", "pt_br": "pt-br",
+    "brazilian": "pt-br", "brazilian-portuguese": "pt-br",
+    "português-brasileiro": "pt-br", "portugues-brasileiro": "pt-br",
+    "brasileiro": "pt-br",
     # Russian
     "russian": "ru", "русский": "ru", "ru-ru": "ru",
     # Hungarian
@@ -134,8 +137,8 @@ def _normalize_lang(value: Any) -> str:
         return key
     if key in _LANGUAGE_ALIASES:
         return _LANGUAGE_ALIASES[key]
-    # Try stripping a region suffix (e.g. "pt-br" -> "pt" won't be supported,
-    # but "zh-CN" -> "zh" will).
+    # Try stripping a region suffix only when the full tag has no dedicated catalog
+    # (for example, "zh-CN" -> "zh").
     base = key.split("-", 1)[0]
     if base in SUPPORTED_LANGUAGES:
         return base

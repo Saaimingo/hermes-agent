@@ -95,6 +95,16 @@ def test_normalize_lang_accepts_aliases():
     assert i18n._normalize_lang("Turkish") == "tr"
     assert i18n._normalize_lang("tr-TR") == "tr"
     assert i18n._normalize_lang("türkçe") == "tr"
+    assert i18n._normalize_lang("pt") == "pt"
+    assert i18n._normalize_lang("pt-PT") == "pt"
+    assert i18n._normalize_lang("pt_pt") == "pt"
+    assert i18n._normalize_lang("pt-BR") == "pt-br"
+    assert i18n._normalize_lang("pt_BR") == "pt-br"
+    assert i18n._normalize_lang("brazilian") == "pt-br"
+    assert i18n._normalize_lang("brasileiro") == "pt-br"
+    assert i18n._normalize_lang("brazilian-portuguese") == "pt-br"
+    assert i18n._normalize_lang("português-brasileiro") == "pt-br"
+    assert i18n._normalize_lang("portugues-brasileiro") == "pt-br"
 
 
 def test_normalize_lang_unknown_falls_back():
@@ -134,6 +144,11 @@ def test_t_explicit_lang():
     assert i18n.t("approval.denied", lang="zh").endswith("已拒绝")
     assert i18n.t("approval.denied", lang="uk").endswith("Відхилено")
     assert i18n.t("approval.denied", lang="tr").endswith("Reddedildi")
+    assert i18n.t(
+        "gateway.model.provider_label",
+        lang="pt-br",
+        provider="OpenAI",
+    ) == "Provedor: OpenAI"
 
 
 def test_t_formats_placeholders():
