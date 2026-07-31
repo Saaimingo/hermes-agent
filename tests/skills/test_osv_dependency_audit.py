@@ -85,6 +85,7 @@ def test_normalize_report_groups_aliases_as_one_candidate(tmp_path: pathlib.Path
     assert finding["state"] == "candidate"
     assert finding["confidence"] == "unreviewed"
     assert finding["severity"] == "high"
+    assert finding["severity_vector"] is None
     assert finding["package"] == {
         "name": "example-package",
         "version": "1.0.0",
@@ -114,3 +115,52 @@ def test_normalize_report_handles_empty_results(tmp_path: pathlib.Path) -> None:
 
     assert normalized["run"]["finding_count"] == 0
     assert normalized["findings"] == []
+
+
+def test_normalize_report_converts_cvss_vector_to_category(
+    tmp_path: pathlib.Path,
+) -> None:
+    module = _load_module()
+    vector = "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+    raw = {
+        "results": [
+            {
+                "source": {"path": "uv.lock", "type": "lockfile"},
+                "packages": [
+                    {
+                        "package": {
+                            "name": "pyasn1",
+                            "version": "0.6.3",
+                            "ecosystem": "PyPI",
+                        },
+                        "vulnerabilities": [
+                            {
+                                "id": "PYSEC-2026-3455",
+                                "severity": [
+                                    {
+                                        "type": "CVSS_V3",
+                                        "score": vector,
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                ],
+            }
+        ]
+    }
+
+    normalized = module.normalize_report(
+        raw,
+        run_id="OSV-CVSS00000000001",
+        target=tmp_path,
+        scanner_version="osv-scanner version 2.3.8",
+        started_at="2026-07-30T20:00:00Z",
+        finished_at="2026-07-30T20:00:01Z",
+        exit_code=1,
+    )
+
+    finding = normalized["findings"][0]
+    assert finding["severity"] == "high"
+    assert finding["severity_vector"] == vector
+    assert module._cvss_v3_base_score(vector) == 7.5
