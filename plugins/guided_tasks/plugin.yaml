@@ -1,0 +1,9 @@
+name: guided_tasks
+version: 0.1.0
+description: "Contractual foundation for Harness guided tasks — typed models for task identity, lineage, planned steps, file changes, risk, acceptance criteria, validation results, and final review. No runtime, CLI, or operational surfaces in this version; those will be added in follow-up plugins."
+author: NousResearch
+kind: standalone
+platforms:
+  - linux
+  - macos
+  - windows
