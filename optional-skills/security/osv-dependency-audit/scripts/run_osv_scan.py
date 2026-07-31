@@ -10,6 +10,7 @@ import argparse
 import datetime as dt
 import hashlib
 import json
+import math
 import pathlib
 import shutil
 import subprocess
@@ -32,20 +33,104 @@ def _safe_text(value: Any) -> str | None:
     return text or None
 
 
+def _severity_vector(vulnerability: dict[str, Any]) -> str | None:
+    severity = vulnerability.get("severity")
+    if not isinstance(severity, list):
+        return None
+
+    for item in severity:
+        if not isinstance(item, dict):
+            continue
+        score = _safe_text(item.get("score"))
+        if score and score.startswith(("CVSS:3.0/", "CVSS:3.1/")):
+            return score
+
+    return None
+
+
+def _round_up_tenth(value: float) -> float:
+    return math.ceil(value * 10.0) / 10.0
+
+
+def _cvss_v3_base_score(vector: str) -> float | None:
+    try:
+        parts = vector.split("/")
+        if parts[0] not in {"CVSS:3.0", "CVSS:3.1"}:
+            return None
+
+        metrics = dict(part.split(":", 1) for part in parts[1:])
+
+        attack_vector = {"N": 0.85, "A": 0.62, "L": 0.55, "P": 0.20}[
+            metrics["AV"]
+        ]
+        attack_complexity = {"L": 0.77, "H": 0.44}[metrics["AC"]]
+        scope = metrics["S"]
+        privileges_required = {
+            "U": {"N": 0.85, "L": 0.62, "H": 0.27},
+            "C": {"N": 0.85, "L": 0.68, "H": 0.50},
+        }[scope][metrics["PR"]]
+        user_interaction = {"N": 0.85, "R": 0.62}[metrics["UI"]]
+        impact_values = {"H": 0.56, "L": 0.22, "N": 0.0}
+
+        confidentiality = impact_values[metrics["C"]]
+        integrity = impact_values[metrics["I"]]
+        availability = impact_values[metrics["A"]]
+
+        impact_subscore = 1 - (
+            (1 - confidentiality) * (1 - integrity) * (1 - availability)
+        )
+
+        if scope == "U":
+            impact = 6.42 * impact_subscore
+        else:
+            impact = (
+                7.52 * (impact_subscore - 0.029)
+                - 3.25 * (impact_subscore - 0.02) ** 15
+            )
+
+        if impact <= 0:
+            return 0.0
+
+        exploitability = (
+            8.22
+            * attack_vector
+            * attack_complexity
+            * privileges_required
+            * user_interaction
+        )
+
+        if scope == "U":
+            return _round_up_tenth(min(impact + exploitability, 10.0))
+
+        return _round_up_tenth(min(1.08 * (impact + exploitability), 10.0))
+    except (KeyError, ValueError):
+        return None
+
+
 def _severity_label(vulnerability: dict[str, Any]) -> str:
     database_specific = vulnerability.get("database_specific")
     if isinstance(database_specific, dict):
         label = _safe_text(database_specific.get("severity"))
         if label:
-            return label.lower()
+            normalized = label.lower()
+            if normalized == "medium":
+                return "moderate"
+            if normalized in {"critical", "high", "moderate", "low"}:
+                return normalized
 
-    severity = vulnerability.get("severity")
-    if isinstance(severity, list) and severity:
-        first = severity[0]
-        if isinstance(first, dict):
-            score = _safe_text(first.get("score"))
-            if score:
-                return score
+    vector = _severity_vector(vulnerability)
+    if vector:
+        score = _cvss_v3_base_score(vector)
+        if score is not None:
+            if score == 0:
+                return "none"
+            if score <= 3.9:
+                return "low"
+            if score <= 6.9:
+                return "moderate"
+            if score <= 8.9:
+                return "high"
+            return "critical"
 
     return "unknown"
 
@@ -138,12 +223,15 @@ def normalize_report(
             vulnerability_by_id = {
                 str(vulnerability.get("id")): vulnerability
                 for vulnerability in vulnerabilities
-                if isinstance(vulnerability, dict) and _safe_text(vulnerability.get("id"))
+                if isinstance(vulnerability, dict)
+                and _safe_text(vulnerability.get("id"))
             }
 
             groups = _canonical_groups(package_result)
             grouped_ids = {item for group in groups for item in group}
-            groups.extend([[vuln_id] for vuln_id in vulnerability_by_id if vuln_id not in grouped_ids])
+            groups.extend(
+                [[vuln_id] for vuln_id in vulnerability_by_id if vuln_id not in grouped_ids]
+            )
 
             for advisory_ids in groups:
                 ordinal += 1
@@ -151,7 +239,11 @@ def normalize_report(
                 advisory = vulnerability_by_id.get(primary_id, {})
                 if not advisory:
                     advisory = next(
-                        (vulnerability_by_id[item] for item in advisory_ids if item in vulnerability_by_id),
+                        (
+                            vulnerability_by_id[item]
+                            for item in advisory_ids
+                            if item in vulnerability_by_id
+                        ),
                         {},
                     )
 
@@ -162,7 +254,9 @@ def normalize_report(
                         continue
                     item_aliases = item.get("aliases")
                     if isinstance(item_aliases, list):
-                        aliases.update(str(alias) for alias in item_aliases if _safe_text(alias))
+                        aliases.update(
+                            str(alias) for alias in item_aliases if _safe_text(alias)
+                        )
 
                 findings.append(
                     {
@@ -172,6 +266,7 @@ def normalize_report(
                         "state": "candidate",
                         "confidence": "unreviewed",
                         "severity": _severity_label(advisory),
+                        "severity_vector": _severity_vector(advisory),
                         "primary_advisory_id": primary_id,
                         "advisory_ids": sorted(aliases),
                         "summary": _safe_text(advisory.get("summary")),
@@ -225,7 +320,9 @@ def _scanner_version(scanner: str) -> str | None:
 
 def _write_json(path: pathlib.Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
 
 
 def _parse_args() -> argparse.Namespace:
